@@ -1,0 +1,74 @@
+{
+  "version": 1,
+  "idle": {
+    "screensaver": 150,
+    "lock": 300
+  },
+  "bar": {
+    "position": "bottom",
+    "transparent": false,
+    "centerAnchor": "omarchy.indicators",
+    "layout": {
+      "left": [
+        {
+          "id": "omarchy.menu"
+        },
+        {
+          "id": "omarchy.keyboard-layout"
+        },
+        {
+          "id": "omarchy.workspaces"
+        },
+        {
+          "id": "agent-launcher",
+          "type": "qml",
+          "source": "~/.config/omarchy/plugins/spencer.bar/widgets/PinnedApp.qml",
+          "command": "omarchy-agent",
+          "icon": "/usr/share/omarchy/shell/plugins/agents/assets/claude.svg",
+          "label": "Agent"
+        }
+      ],
+      "center": [],
+      "right": [
+        {
+          "id": "omarchy.tray"
+        },
+        {
+          "id": "omarchy.indicators"
+        },
+        {
+          "id": "omarchy.weather"
+        },
+        {
+          "id": "omarchy.agents"
+        },
+        {
+          "id": "omarchy.bluetooth"
+        },
+        {
+          "id": "omarchy.network"
+        },
+        {
+          "id": "omarchy.audio"
+        },
+        {
+          "id": "omarchy.monitor"
+        },
+        {
+          "id": "omarchy.power"
+        },
+        {
+          "id": "omarchy.system-update"
+        },
+        {
+          "id": "omarchy.clock",
+          "format": "ddd d MMM HH:mm",
+          "formatAlt": "d MMMM 'W'ww yyyy",
+          "verticalFormat": "HH\n—\nmm"
+        }
+      ]
+    },
+    "id": "spencer.bar"
+  },
+  "plugins": []
+}

@@ -181,3 +181,21 @@ declaring `kinds: ["bar-widget"]` and a `barWidget` entry point. See
 [../../README.md](../../README.md) for the manifest schema. Rescan, enable,
 and place third-party plugins with `omarchy-shell shell rescanPlugins`,
 `omarchy plugin enable`, and `omarchy bar move`.
+
+## This machine's layout
+
+`shell.json.example` is a copy of this machine's actual
+`~/.config/omarchy/shell.json` — position (bottom), the pinned agent
+launcher, and the current left/center/right icon order. On a new machine,
+after cloning this repo into `~/.config/omarchy/plugins/spencer.bar`, copy
+its `bar` subtree into your own `~/.config/omarchy/shell.json` (or copy the
+whole file if you don't have one yet) and `omarchy restart shell`.
+
+Note the ad-hoc widget mechanism used for the pinned launcher: third-party
+plugins only get their top-level `manifest.json` scanned (see
+`PluginRegistry.qml`'s `scan_thirdparty`), so nested files under `widgets/`
+in this repo — despite carrying sibling `*.manifest.json` files, a pattern
+copied from the first-party bar this was cloned from — are never picked up
+as registered bar-widgets. New widgets (like `widgets/PinnedApp.qml`) have
+to be loaded per-instance from shell.json instead, via
+`{ "type": "qml", "source": "~/.config/omarchy/plugins/spencer.bar/widgets/<File>.qml", ... }`.
