@@ -24,7 +24,6 @@
           "type": "qml",
           "source": "~/.config/omarchy/plugins/spencer.bar/widgets/PinnedApp.qml",
           "command": "omarchy-agent",
-          "icon": "/usr/share/omarchy/shell/plugins/agents/assets/claude.svg",
           "label": "Agent"
         }
       ],
