@@ -1743,10 +1743,10 @@ Item {
 
               width: Style.space(24)
               height: Style.space(24)
-              radius: width / 2
+              radius: Style.cornerRadius
               color: swatchColor
-              border.width: isSelected ? 3 : 1
-              border.color: isSelected ? root.barForeground : Qt.darker(root.barForeground, 1.6)
+              opacity: isSelected ? 1 : 0.7
+              scale: isSelected ? 1.12 : 1
 
               MouseArea {
                 anchors.fill: parent
