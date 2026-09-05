@@ -1647,8 +1647,82 @@ Item {
             { label: "Opacity", prop: "opacityLevel", min: 0, max: 1, step: 0.02 },
             { label: "Gap", prop: "floatGap", min: 0, max: 30, step: 1 },
             { label: "Corner radius", prop: "floatRadius", min: 0, max: 20, step: 1 },
-            { label: "Blur intensity", prop: "blurSize", min: 0, max: 20, step: 1 },
-            { label: "Outline color", prop: "borderHue", min: 0, max: 1, step: 0.01 },
+            { label: "Blur intensity", prop: "blurSize", min: 0, max: 20, step: 1 }
+          ]
+
+          Column {
+            required property var modelData
+            width: settingsColumn.width
+            spacing: Style.space(4)
+
+            readonly property bool isPercent: modelData.prop === "opacityLevel"
+
+            Text {
+              text: modelData.label + ": " + (parent.isPercent
+                ? Math.round(root[modelData.prop] * 100) + "%"
+                : Math.round(root[modelData.prop]) + "px")
+              color: Qt.darker(root.barForeground, 1.2)
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.caption
+            }
+
+            PanelSlider {
+              bar: root
+              width: parent.width
+              minimum: modelData.min
+              maximum: modelData.max
+              step: modelData.step
+              value: root[modelData.prop]
+
+              onMoved: function(v) { root[modelData.prop] = v }
+              onReleased: root.persistFloatingSettings()
+            }
+          }
+        }
+
+        Text {
+          text: "Outline color"
+          color: Qt.darker(root.barForeground, 1.2)
+          font.family: root.fontFamily
+          font.pixelSize: Style.font.caption
+        }
+
+        Flow {
+          width: settingsColumn.width
+          spacing: Style.space(8)
+
+          Repeater {
+            // Evenly spaced hues around the wheel. Swatches render at the
+            // outline's current saturation/brightness so the picker shows
+            // what each hue will actually look like, not a fixed reference
+            // color.
+            model: [0, 0.08, 0.17, 0.25, 0.33, 0.42, 0.5, 0.58, 0.67, 0.75, 0.83, 0.92]
+
+            Rectangle {
+              required property real modelData
+              readonly property bool isSelected: Math.abs(modelData - root.borderHue) < 0.001
+
+              width: Style.space(24)
+              height: Style.space(24)
+              radius: width / 2
+              color: Qt.hsla(modelData, root.borderSaturation, root.borderLightness, 1)
+              border.width: isSelected ? 3 : 1
+              border.color: isSelected ? root.barForeground : Qt.darker(root.barForeground, 1.6)
+
+              MouseArea {
+                anchors.fill: parent
+                cursorShape: Qt.PointingHandCursor
+                onClicked: {
+                  root.borderHue = parent.modelData
+                  root.persistFloatingSettings()
+                }
+              }
+            }
+          }
+        }
+
+        Repeater {
+          model: [
             { label: "Outline saturation", prop: "borderSaturation", min: 0, max: 1, step: 0.01 },
             { label: "Outline brightness", prop: "borderLightness", min: 0, max: 1, step: 0.01 },
             { label: "Outline opacity", prop: "borderOpacity", min: 0, max: 1, step: 0.02 }
@@ -1659,12 +1733,8 @@ Item {
             width: settingsColumn.width
             spacing: Style.space(4)
 
-            readonly property bool isPercent: modelData.prop === "opacityLevel" || modelData.prop === "borderHue" || modelData.prop === "borderSaturation" || modelData.prop === "borderLightness" || modelData.prop === "borderOpacity"
-
             Text {
-              text: modelData.label + ": " + (parent.isPercent
-                ? Math.round(root[modelData.prop] * 100) + "%"
-                : Math.round(root[modelData.prop]) + "px")
+              text: modelData.label + ": " + Math.round(root[modelData.prop] * 100) + "%"
               color: Qt.darker(root.barForeground, 1.2)
               font.family: root.fontFamily
               font.pixelSize: Style.font.caption
