@@ -97,7 +97,11 @@ Item {
   property real borderHue: barForeground.hslHue
   property real borderSaturation: barForeground.hslSaturation
   property real borderLightness: barForeground.hslLightness
-  readonly property real borderAlpha: 0.18
+  // Fades in lockstep with the fill so a fully transparent panel (opacity
+  // dialed to 0) leaves no outline behind either — previously a fixed 0.18
+  // regardless of opacityLevel, so the border stayed visible even with the
+  // fill invisible.
+  readonly property real borderAlpha: panelAlpha
   readonly property color borderColor: Qt.hsla(borderHue, borderSaturation, borderLightness, borderAlpha)
   // Mirrors hypr/looknfeel.lua's decoration.blur.size default. Changing this
   // only pokes the running compositor via `hyprctl keyword` - it does not
@@ -113,7 +117,7 @@ Item {
       var data = JSON.parse(jsonText)
       if (typeof data.gap === "number" && isFinite(data.gap)) root.floatGap = Math.round(data.gap)
       if (typeof data.radius === "number" && isFinite(data.radius)) root.floatRadius = Math.round(data.radius)
-      if (typeof data.opacity === "number" && isFinite(data.opacity)) root.opacityLevel = Math.max(0.05, Math.min(1, data.opacity))
+      if (typeof data.opacity === "number" && isFinite(data.opacity)) root.opacityLevel = Math.max(0, Math.min(1, data.opacity))
       if (typeof data.blur === "number" && isFinite(data.blur)) root.blurSize = Math.round(data.blur)
       if (typeof data.borderHue === "number" && isFinite(data.borderHue)) root.borderHue = Math.max(0, Math.min(1, data.borderHue))
       if (typeof data.borderLightness === "number" && isFinite(data.borderLightness)) root.borderLightness = Math.max(0, Math.min(1, data.borderLightness))
@@ -1639,7 +1643,7 @@ Item {
 
         Repeater {
           model: [
-            { label: "Opacity", prop: "opacityLevel", min: 0.1, max: 0.9, step: 0.02 },
+            { label: "Opacity", prop: "opacityLevel", min: 0, max: 1, step: 0.02 },
             { label: "Gap", prop: "floatGap", min: 0, max: 30, step: 1 },
             { label: "Corner radius", prop: "floatRadius", min: 0, max: 20, step: 1 },
             { label: "Blur intensity", prop: "blurSize", min: 0, max: 20, step: 1 },

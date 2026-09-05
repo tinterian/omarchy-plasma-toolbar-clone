@@ -1,9 +1,9 @@
 {
   "gap": 12,
   "radius": 0,
-  "opacity": 0.19657069288389514,
+  "opacity": 0.1,
   "blur": 0,
   "borderHue": 0.4952452013108614,
-  "borderLightness": 0.5,
-  "borderSaturation": 0.6
+  "borderLightness": 1,
+  "borderSaturation": 0.4989758895131086
 }
