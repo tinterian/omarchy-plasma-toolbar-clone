@@ -97,11 +97,10 @@ Item {
   property real borderHue: barForeground.hslHue
   property real borderSaturation: barForeground.hslSaturation
   property real borderLightness: barForeground.hslLightness
-  // Fades in lockstep with the fill so a fully transparent panel (opacity
-  // dialed to 0) leaves no outline behind either — previously a fixed 0.18
-  // regardless of opacityLevel, so the border stayed visible even with the
-  // fill invisible.
-  readonly property real borderAlpha: panelAlpha
+  // Independent of the fill's opacityLevel, so the outline can stay put (or
+  // stand out) while the fill is dialed to fully invisible, or vice versa.
+  property real borderOpacity: 0.4
+  readonly property real borderAlpha: borderOpacity
   readonly property color borderColor: Qt.hsla(borderHue, borderSaturation, borderLightness, borderAlpha)
   // Mirrors hypr/looknfeel.lua's decoration.blur.size default. Changing this
   // only pokes the running compositor via `hyprctl keyword` - it does not
@@ -122,6 +121,7 @@ Item {
       if (typeof data.borderHue === "number" && isFinite(data.borderHue)) root.borderHue = Math.max(0, Math.min(1, data.borderHue))
       if (typeof data.borderLightness === "number" && isFinite(data.borderLightness)) root.borderLightness = Math.max(0, Math.min(1, data.borderLightness))
       if (typeof data.borderSaturation === "number" && isFinite(data.borderSaturation)) root.borderSaturation = Math.max(0, Math.min(1, data.borderSaturation))
+      if (typeof data.borderOpacity === "number" && isFinite(data.borderOpacity)) root.borderOpacity = Math.max(0, Math.min(1, data.borderOpacity))
     } catch (e) {
       console.warn("spencer.bar: failed to parse floating-settings.json:", e)
     }
@@ -135,7 +135,8 @@ Item {
       blur: root.blurSize,
       borderHue: root.borderHue,
       borderLightness: root.borderLightness,
-      borderSaturation: root.borderSaturation
+      borderSaturation: root.borderSaturation,
+      borderOpacity: root.borderOpacity
     }, null, 2) + "\n")
   }
 
@@ -1649,7 +1650,8 @@ Item {
             { label: "Blur intensity", prop: "blurSize", min: 0, max: 20, step: 1 },
             { label: "Outline color", prop: "borderHue", min: 0, max: 1, step: 0.01 },
             { label: "Outline saturation", prop: "borderSaturation", min: 0, max: 1, step: 0.01 },
-            { label: "Outline brightness", prop: "borderLightness", min: 0, max: 1, step: 0.01 }
+            { label: "Outline brightness", prop: "borderLightness", min: 0, max: 1, step: 0.01 },
+            { label: "Outline opacity", prop: "borderOpacity", min: 0, max: 1, step: 0.02 }
           ]
 
           Column {
@@ -1657,7 +1659,7 @@ Item {
             width: settingsColumn.width
             spacing: Style.space(4)
 
-            readonly property bool isPercent: modelData.prop === "opacityLevel" || modelData.prop === "borderHue" || modelData.prop === "borderSaturation" || modelData.prop === "borderLightness"
+            readonly property bool isPercent: modelData.prop === "opacityLevel" || modelData.prop === "borderHue" || modelData.prop === "borderSaturation" || modelData.prop === "borderLightness" || modelData.prop === "borderOpacity"
 
             Text {
               text: modelData.label + ": " + (parent.isPercent
