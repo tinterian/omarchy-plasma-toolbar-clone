@@ -109,6 +109,33 @@ Item {
   property int blurSize: 6
 
   readonly property string floatingSettingsPath: omarchyConfigDir + "/plugins/spencer.bar/floating-settings.json"
+  // Mirrors qs.Commons.Color's own currentThemePath — same active-theme
+  // symlink, read independently here because Color only surfaces
+  // foreground/background/accent/urgent/muted, not the full named palette
+  // (red/orange/yellow/green/cyan/blue/magenta) the outline swatches want.
+  readonly property string themeColorsPath: stateHome + "/omarchy/current/theme/colors.toml"
+  // Ordered so the swatch row has a stable, sensible layout; entries whose
+  // key is missing from the active theme's colors.toml are just skipped.
+  readonly property var themeSwatchKeys: ["accent", "red", "orange", "yellow", "green", "cyan", "blue", "magenta", "brown"]
+  property var themeColors: ({})
+  readonly property var themeSwatches: {
+    var list = []
+    for (var i = 0; i < themeSwatchKeys.length; i++) {
+      var key = themeSwatchKeys[i]
+      if (themeColors[key]) list.push({ label: key, hex: themeColors[key] })
+    }
+    return list
+  }
+
+  function loadThemeColors(text) {
+    var found = {}
+    var lines = String(text || "").split("\n")
+    for (var i = 0; i < lines.length; i++) {
+      var match = lines[i].match(/^\s*([A-Za-z0-9_-]+)\s*=\s*["']?(#[0-9A-Fa-f]{6})/)
+      if (match) found[match[1]] = match[2]
+    }
+    root.themeColors = found
+  }
 
   function applyFloatingSettings(jsonText) {
     if (!jsonText) return
@@ -160,6 +187,15 @@ Item {
     atomicWrites: true
     printErrors: false
     onLoaded: root.applyFloatingSettings(text())
+    onLoadFailed: function() {}
+  }
+
+  FileView {
+    id: themeColorsFile
+    path: root.themeColorsPath
+    watchChanges: true
+    printErrors: false
+    onLoaded: root.loadThemeColors(text())
     onLoadFailed: function() {}
   }
 
@@ -1692,20 +1728,23 @@ Item {
           spacing: Style.space(8)
 
           Repeater {
-            // Evenly spaced hues around the wheel. Swatches render at the
-            // outline's current saturation/brightness so the picker shows
-            // what each hue will actually look like, not a fixed reference
-            // color.
-            model: [0, 0.08, 0.17, 0.25, 0.33, 0.42, 0.5, 0.58, 0.67, 0.75, 0.83, 0.92]
+            // Pulled from the active theme's colors.toml (see themeSwatches)
+            // instead of an arbitrary hue wheel, so the presets are always
+            // colors that already belong to the theme in use.
+            model: root.themeSwatches
 
             Rectangle {
-              required property real modelData
-              readonly property bool isSelected: Math.abs(modelData - root.borderHue) < 0.001
+              required property var modelData
+              readonly property color swatchColor: modelData.hex
+              readonly property bool isSelected:
+                Math.abs(swatchColor.hslHue - root.borderHue) < 0.001
+                && Math.abs(swatchColor.hslSaturation - root.borderSaturation) < 0.001
+                && Math.abs(swatchColor.hslLightness - root.borderLightness) < 0.001
 
               width: Style.space(24)
               height: Style.space(24)
               radius: width / 2
-              color: Qt.hsla(modelData, root.borderSaturation, root.borderLightness, 1)
+              color: swatchColor
               border.width: isSelected ? 3 : 1
               border.color: isSelected ? root.barForeground : Qt.darker(root.barForeground, 1.6)
 
@@ -1713,7 +1752,9 @@ Item {
                 anchors.fill: parent
                 cursorShape: Qt.PointingHandCursor
                 onClicked: {
-                  root.borderHue = parent.modelData
+                  root.borderHue = parent.swatchColor.hslHue
+                  root.borderSaturation = parent.swatchColor.hslSaturation
+                  root.borderLightness = parent.swatchColor.hslLightness
                   root.persistFloatingSettings()
                 }
               }
