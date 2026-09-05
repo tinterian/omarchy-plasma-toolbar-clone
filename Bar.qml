@@ -1601,6 +1601,35 @@ Item {
         spacing: Style.space(12)
 
         Text {
+          text: "Position"
+          color: root.barForeground
+          font.family: root.fontFamily
+          font.pixelSize: Style.font.body
+          font.bold: true
+        }
+
+        ButtonGroup {
+          width: settingsColumn.width
+          options: [
+            { value: "top", label: "Top" },
+            { value: "bottom", label: "Bottom" },
+            { value: "left", label: "Left" },
+            { value: "right", label: "Right" }
+          ]
+          value: root.position
+          foreground: root.barForeground
+          onChanged: function(v) {
+            root.setBarPosition(v)
+            // The popup's screen position is computed once when it opens
+            // (PopupCard's onAnchoring doesn't refire on a live bar.position
+            // change), so switching edges while it's open would otherwise
+            // leave a stale card floating at the old bar location. Closing
+            // it here means the next open recomputes against the new edge.
+            gestureArea.settingsOpen = false
+          }
+        }
+
+        Text {
           text: "Floating panel"
           color: root.barForeground
           font.family: root.fontFamily

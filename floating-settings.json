@@ -4,5 +4,6 @@
   "opacity": 0.19657069288389514,
   "blur": 0,
   "borderHue": 0.4952452013108614,
-  "borderLightness": 1
+  "borderLightness": 0.5,
+  "borderSaturation": 0.6
 }
