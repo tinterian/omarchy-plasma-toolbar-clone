@@ -1,4 +1,43 @@
-# Omarchy bar
+# omarchy-plasma-toolbar-clone
+
+A Quickshell Omarchy bar, customized to feel like the KDE Plasma taskbar:
+a floating panel with adjustable position, opacity, blur, and outline
+color, plus a pinned-app launcher for one-click app shortcuts. The one
+thing this deliberately does **not** clone is Plasma's own application
+launcher/start menu — that's still Omarchy's stock app menu
+(`omarchy.menu`), left alone on purpose rather than replaced.
+
+![Settings popup](screenshot-settings.png)
+
+Built by iterating with Claude Code on top of `omarchy.bar` (this repo
+started as a clone of the stock bar — see `manifest.json`'s `clonedFrom`).
+What's added on top of stock:
+
+- **Position selector** — Top/Bottom/Left/Right buttons in the settings
+  popup (right-click the bar), on top of the stock drag-to-edge move.
+- **Floating panel opacity that actually reaches 0** — the stock slider
+  bottomed out at 10%; here it (and the loader) go all the way to fully
+  transparent.
+- **Outline color, decoupled from the fill** — hue/saturation/brightness/
+  opacity for the panel's border are independent of the fill's opacity, so
+  you can have an invisible fill with a visible outline, or vice versa.
+- **Outline color swatches pulled from the active theme** — no arbitrary
+  hue wheel; the presets are your theme's own `colors.toml` palette
+  (accent/red/orange/yellow/green/cyan/blue/magenta/brown), so switching
+  Omarchy themes gives you matching presets automatically.
+- **Pinned-app launcher widget** (`widgets/PinnedApp.qml`) — a one-click
+  bar icon for a fixed command or an installed app, the Plasma-taskbar-
+  pinned-icon pattern. This machine's example pins the default coding
+  agent (`omarchy-agent`) with the Claude logo.
+
+See `shell.json.example` for this machine's actual layout (bottom
+position, the pinned agent icon, icon order) to use as a starting point.
+
+## Stock bar documentation
+
+The rest of this file is the documentation for the underlying stock
+`omarchy.bar` engine this was cloned from — still accurate, since none of
+the above changes it fundamentally.
 
 This is the Quickshell implementation of the Omarchy status bar. It is
 shipped as a first-party plugin of [`omarchy-shell`](../../README.md), the
