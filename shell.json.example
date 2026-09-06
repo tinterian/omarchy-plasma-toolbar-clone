@@ -25,6 +25,14 @@
           "source": "~/.config/omarchy/plugins/spencer.bar/widgets/PinnedApp.qml",
           "command": "omarchy-agent",
           "label": "Agent"
+        },
+        {
+          "id": "rememberzit-launcher",
+          "type": "qml",
+          "source": "~/.config/omarchy/plugins/spencer.bar/widgets/PinnedApp.qml",
+          "command": "/home/spencer/Work/reader-profile/.venv/bin/reader-profile",
+          "icon": "/home/spencer/Work/reader-profile/assets/icon.png",
+          "label": "RememberZit3"
         }
       ],
       "center": [],
