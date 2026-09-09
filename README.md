@@ -21,10 +21,21 @@ What's added on top of stock:
 - **Outline color, decoupled from the fill** — hue/saturation/brightness/
   opacity for the panel's border are independent of the fill's opacity, so
   you can have an invisible fill with a visible outline, or vice versa.
+  Until you pick a swatch, the outline tracks your theme's `accent` color
+  live — the same `colors.toml` key Hyprland's own window border uses — so
+  it matches your actual window borders and updates automatically on
+  `omarchy theme set`. Picking a swatch pins it to that color instead
+  (persisted, survives restarts); there's currently no UI to go back to
+  "follow the theme" short of deleting `floating-settings.json`'s
+  `borderCustomized`/`borderHue`/`borderSaturation`/`borderLightness` keys.
 - **Outline color swatches pulled from the active theme** — no arbitrary
   hue wheel; the presets are your theme's own `colors.toml` palette
   (accent/red/orange/yellow/green/cyan/blue/magenta/brown), so switching
   Omarchy themes gives you matching presets automatically.
+- **Blur slider works on both stock and Lua-config Hyprland forks** — sends
+  both the standard `hyprctl keyword decoration:blur:size` and this
+  project's dev machine's `hyprctl eval hl.config(...)` form every time;
+  each compositor ignores the one it doesn't understand.
 - **Pinned-app launcher widget** (`widgets/PinnedApp.qml`) — a one-click
   bar icon for a fixed command or an installed app, the Plasma-taskbar-
   pinned-icon pattern. This machine's example pins the default coding

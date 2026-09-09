@@ -92,11 +92,23 @@ Item {
   readonly property real panelAlpha: transparent ? 0.16 : opacityLevel
   readonly property color panelBackground: Qt.rgba(background.r, background.g, background.b, panelAlpha)
   // Outline color, decomposed as hue + lightness (HSL) so each is a single
-  // slider. Seeded from the theme's own foreground so the border looks
-  // unchanged until the user actually drags one of these.
-  property real borderHue: barForeground.hslHue
-  property real borderSaturation: barForeground.hslSaturation
-  property real borderLightness: barForeground.hslLightness
+  // slider. Seeded from the theme's own accent color -- specifically
+  // Color.accent, the SAME colors.toml key Hyprland's own window border
+  // (active_border_color, see /usr/share/omarchy/default/themed/
+  // hyprland.lua.tpl's `hypr_gradient hyprland_active_border accent`) is
+  // built from -- so the panel outline matches your actual window borders
+  // by default, not an unrelated foreground/text color. This is a live QML
+  // binding (re-evaluates whenever Color.accent/the theme changes) -- but
+  // ONLY until something imperatively assigns to borderHue/Saturation/
+  // Lightness, which permanently breaks the binding (QML semantics: a plain
+  // `property x: expr` binding is replaced, not shadowed, by any `x = value`
+  // assignment). borderCustomized below exists to gate those assignments to
+  // an actual user pick, not every settings-file load, so the outline keeps
+  // tracking theme changes for anyone who never touched this control.
+  property bool borderCustomized: false
+  property real borderHue: Color.accent.hslHue
+  property real borderSaturation: Color.accent.hslSaturation
+  property real borderLightness: Color.accent.hslLightness
   // Independent of the fill's opacityLevel, so the outline can stay put (or
   // stand out) while the fill is dialed to fully invisible, or vice versa.
   property real borderOpacity: 0.4
@@ -145,9 +157,20 @@ Item {
       if (typeof data.radius === "number" && isFinite(data.radius)) root.floatRadius = Math.round(data.radius)
       if (typeof data.opacity === "number" && isFinite(data.opacity)) root.opacityLevel = Math.max(0, Math.min(1, data.opacity))
       if (typeof data.blur === "number" && isFinite(data.blur)) root.blurSize = Math.round(data.blur)
-      if (typeof data.borderHue === "number" && isFinite(data.borderHue)) root.borderHue = Math.max(0, Math.min(1, data.borderHue))
-      if (typeof data.borderLightness === "number" && isFinite(data.borderLightness)) root.borderLightness = Math.max(0, Math.min(1, data.borderLightness))
-      if (typeof data.borderSaturation === "number" && isFinite(data.borderSaturation)) root.borderSaturation = Math.max(0, Math.min(1, data.borderSaturation))
+      // Only reassign the border hue/sat/lightness (which permanently
+      // detaches them from the live theme-foreground binding — see the
+      // borderCustomized comment above) if this settings file actually
+      // recorded a deliberate user pick. Older settings files predate this
+      // flag and have no borderCustomized key, so `data.borderCustomized`
+      // is undefined/falsy and this correctly falls through to "leave the
+      // binding alone" -- restoring theme-tracking for anyone who was stuck
+      // with a frozen border color from before this fix.
+      if (data.borderCustomized === true) {
+        root.borderCustomized = true
+        if (typeof data.borderHue === "number" && isFinite(data.borderHue)) root.borderHue = Math.max(0, Math.min(1, data.borderHue))
+        if (typeof data.borderLightness === "number" && isFinite(data.borderLightness)) root.borderLightness = Math.max(0, Math.min(1, data.borderLightness))
+        if (typeof data.borderSaturation === "number" && isFinite(data.borderSaturation)) root.borderSaturation = Math.max(0, Math.min(1, data.borderSaturation))
+      }
       if (typeof data.borderOpacity === "number" && isFinite(data.borderOpacity)) root.borderOpacity = Math.max(0, Math.min(1, data.borderOpacity))
     } catch (e) {
       console.warn("spencer.bar: failed to parse floating-settings.json:", e)
@@ -160,6 +183,7 @@ Item {
       radius: root.floatRadius,
       opacity: root.opacityLevel,
       blur: root.blurSize,
+      borderCustomized: root.borderCustomized,
       borderHue: root.borderHue,
       borderLightness: root.borderLightness,
       borderSaturation: root.borderSaturation,
@@ -169,12 +193,27 @@ Item {
 
   function applyBlurSize(size) {
     var clamped = Math.max(0, Math.min(30, Math.round(size)))
-    // This build's Hyprland uses the Lua config engine, which rejects
-    // `hyprctl keyword` at runtime ("can't work with non-legacy parsers") -
-    // silently, as far as this process could tell, since hyprctl still exits
-    // 0. `hyprctl eval` running the equivalent hl.config() call is what
-    // actually reaches a Lua-parsed Hyprland.
-    blurSizeProc.command = ["hyprctl", "eval", "hl.config({decoration={blur={size=" + clamped + "}}})"]
+    // Two different Hyprland config engines exist in the wild, and there's
+    // no reliable way from here to tell which one a given machine is
+    // running, so both forms are sent every time and each compositor just
+    // ignores the one it doesn't understand:
+    //  - Stock/upstream Hyprland (what real installs use): the standard
+    //    `hyprctl keyword decoration:blur:size N`.
+    //  - This dev machine's fork uses a Lua config engine instead, which
+    //    rejects `hyprctl keyword` at runtime ("can't work with non-legacy
+    //    parsers") -- silently, as far as this process can tell, since
+    //    hyprctl still exits 0. `hyprctl eval` running the equivalent
+    //    hl.config() call is what actually reaches a Lua-parsed Hyprland;
+    //    on stock Hyprland `hl` doesn't exist and this just errors out
+    //    harmlessly (stderr discarded below).
+    // Originally this only sent the hl.config() form, which is why blur
+    // worked on this machine but silently did nothing on every real/stock
+    // Hyprland install it was tried on.
+    var script =
+      "hyprctl keyword decoration:blur:size " + clamped + " >/dev/null 2>&1; " +
+      "hyprctl eval 'hl.config({decoration={blur={size=" + clamped + "}}})' >/dev/null 2>&1; " +
+      "true"
+    blurSizeProc.command = ["bash", "-lc", script]
     if (!blurSizeProc.running) blurSizeProc.running = true
   }
 
@@ -1752,6 +1791,7 @@ Item {
                 anchors.fill: parent
                 cursorShape: Qt.PointingHandCursor
                 onClicked: {
+                  root.borderCustomized = true
                   root.borderHue = parent.swatchColor.hslHue
                   root.borderSaturation = parent.swatchColor.hslSaturation
                   root.borderLightness = parent.swatchColor.hslLightness
