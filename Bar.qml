@@ -843,6 +843,25 @@ Item {
     return true
   }
 
+  // Removes a module's entry from whichever layout region holds it (a pinned
+  // launcher's "Unpin"). Returns true when something was removed.
+  function removeModuleFromConfig(name) {
+    if (!name || !root.shell || typeof root.shell.mutateShellConfig !== "function") return false
+
+    var removed = false
+    root.shell.mutateShellConfig(function(config) {
+      var regions = ["left", "center", "right"]
+      for (var i = 0; i < regions.length; i++) {
+        var entries = rawLayoutSection(config, regions[i])
+        var index = rawEntryIndex(entries, name)
+        if (index < 0) continue
+        entries.splice(index, 1)
+        removed = true
+      }
+    })
+    return removed
+  }
+
   function dropBarModule(source, toRegion, beforeName) {
     if (!source || !source.region || !source.moduleName || !toRegion) return false
     if (source.region === toRegion && source.moduleName === beforeName) return false
