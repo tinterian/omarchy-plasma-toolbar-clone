@@ -2,10 +2,10 @@
 
 A Quickshell Omarchy bar, customized to feel like the KDE Plasma taskbar:
 a floating panel with adjustable position, opacity, blur, and outline
-color, plus a pinned-app launcher for one-click app shortcuts. The one
-thing this deliberately does **not** clone is Plasma's own application
-launcher/start menu — that's still Omarchy's stock app menu
-(`omarchy.menu`), left alone on purpose rather than replaced.
+color, plus pinned-app launchers with a dock-style right-click menu. It
+does **not** replace Omarchy's app launcher; the optional [`menu/`](menu/)
+plugin in this repo is a clone of the stock `omarchy.menu` that adds a
+right-click menu on app rows (Open, Pin to bar, Pin to dock, Uninstall).
 
 ![Settings popup](screenshot-settings.png)
 
@@ -39,10 +39,69 @@ What's added on top of stock:
 - **Pinned-app launcher widget** (`widgets/PinnedApp.qml`) — a one-click
   bar icon for a fixed command or an installed app, the Plasma-taskbar-
   pinned-icon pattern. This machine's example pins the default coding
-  agent (`omarchy-agent`) with the Claude logo.
+  agent (`omarchy-agent`) with the Claude logo, plus Kodi and Clementine as
+  installed-app pins (`"app": "<desktop id>"`).
+  - **Left-click focuses a running window first.** Single-instance apps
+    (Clementine) ignore a second launch and Wayland can't raise them, so a
+    plain re-launch did nothing visible. Only if no window matches does it
+    launch.
+  - **Right-click menu, following `animated.dock`'s `ContextMenu.qml`:**
+    the app's own Desktop Actions (e.g. Clementine's Play/Pause, Stop,
+    Next), New Window (Open for command pins), Unpin, then its open windows
+    and Close Window(s). Built on the shell's `PopupCard`. Unpin removes the
+    entry through `Bar.removeModuleFromConfig()`.
+  - **Gotcha, not caused by the bar:** an app can start with no window if it
+    was last closed to the tray. Clementine does this by default (startup
+    behaviour "remember"): the process runs, nothing appears, and a second
+    launch shows it. Setting `startupbehaviour=2` under `[MainWindow]` in
+    `~/.config/Clementine/Clementine.conf` makes it always show.
 
 See `shell.json.example` for this machine's actual layout (bottom
 position, the pinned agent icon, icon order) to use as a starting point.
+
+## Menu plugin (`menu/`)
+
+A clone of the stock `omarchy.menu` (`clonedFrom: omarchy.menu`, made with
+`omarchy plugin clone omarchy.menu`) with one addition: **right-click an app
+in the menu** (or press the Menu key on the selected row) for a popup:
+
+- **Open**
+- **Pin to bar / Unpin from bar**: adds or removes a `PinnedApp` launcher in
+  the bar's left group (appended at the end; drag to reorder)
+- **Pin to dock / Unpin from dock**: through `animated.dock`'s own
+  `omarchy-dock-config`; only shown if that plugin is installed
+- **Uninstall**: the same confirm dialog the Delete key already uses
+
+The pin state is read from `shell.json`, so an app already pinned offers
+Unpin. It applies to every app the menu lists, including ones installed
+later. Files: `Menu.qml` (the stock menu plus the popup), `bin/pin-app.sh`
+(bar/dock pin and unpin, atomic and validated), `LocalAppLibrary.qml` and
+`AppSearch.js` (see below). `MenuModel.js` and `BarWidget.qml` are stock.
+
+**Install:** `omarchy plugin clone omarchy.menu`, copy this folder's files
+over `~/.config/omarchy/plugins/<you>.menu/` (the clone's id is
+`<user>.menu`; this repo's copy is `spencer.menu`), then
+`omarchy restart shell`. Menu changes only load after a shell restart.
+
+Things worth knowing:
+
+- **The clone moves your start button.** Enabling a cloned menu puts the new
+  id in the bar's *center* slot and drops the stock one. Move
+  `spencer.menu` back to where `omarchy.menu` was in `bar.layout`
+  (`shell.json.example` shows it). The clone also adds
+  `cloneSourceRestores` and `disabledPlugins` keys to `shell.json`.
+- **`manifest.json` sets `keepLoaded: false`, and the menu carries its own
+  app list.** The host destroys a kept-loaded third-party plugin's shell API
+  about a second after startup, leaving `shell.appLibrary` null, so the
+  Apps submenu came up empty. Loading on demand avoids the destroyed API,
+  and `LocalAppLibrary.qml` (built on `DesktopEntries`, same surface as the
+  shell's `AppLibrary`) is used whenever the host provides none.
+- The repo's `menu/` is a copy for distribution; the live plugin is
+  `~/.config/omarchy/plugins/spencer.menu/`. Sync changes both ways by hand.
+- Derived from Omarchy's stock menu code (MIT). Only the right-click popup,
+  the pin script and the fallback app list are new.
+- Not exercised: Uninstall, and a physical right-click (the popup was driven
+  through the same code path with the Menu key).
 
 ## Stock bar documentation
 
@@ -236,7 +295,9 @@ and place third-party plugins with `omarchy-shell shell rescanPlugins`,
 
 `shell.json.example` is a copy of this machine's actual
 `~/.config/omarchy/shell.json` — position (bottom), the pinned agent
-launcher, and the current left/center/right icon order. On a new machine,
+launcher, the Kodi and Clementine app pins, `spencer.menu` as the start
+button and the current left/center/right icon order. If you use it without the [`menu/`](menu/) plugin, change
+`spencer.menu` back to `omarchy.menu`. On a new machine,
 after cloning this repo into `~/.config/omarchy/plugins/spencer.bar`, copy
 its `bar` subtree into your own `~/.config/omarchy/shell.json` (or copy the
 whole file if you don't have one yet) and `omarchy restart shell`.

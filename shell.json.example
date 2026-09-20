@@ -11,7 +11,7 @@
     "layout": {
       "left": [
         {
-          "id": "omarchy.menu"
+          "id": "spencer.menu"
         },
         {
           "id": "omarchy.keyboard-layout"
@@ -33,6 +33,20 @@
           "command": "/home/spencer/Work/reader-profile/.venv/bin/reader-profile",
           "icon": "/home/spencer/Work/reader-profile/assets/icon.png",
           "label": "RememberZit3"
+        },
+        {
+          "app": "kodi",
+          "id": "kodi-launcher",
+          "label": "Kodi",
+          "source": "~/.config/omarchy/plugins/spencer.bar/widgets/PinnedApp.qml",
+          "type": "qml"
+        },
+        {
+          "app": "org.clementine_player.Clementine",
+          "id": "clementine-launcher",
+          "label": "Clementine",
+          "source": "~/.config/omarchy/plugins/spencer.bar/widgets/PinnedApp.qml",
+          "type": "qml"
         }
       ],
       "center": [],
