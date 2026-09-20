@@ -296,7 +296,9 @@ and place third-party plugins with `omarchy-shell shell rescanPlugins`,
 `shell.json.example` is a copy of this machine's actual
 `~/.config/omarchy/shell.json` — position (bottom), the pinned agent
 launcher, the Kodi and Clementine app pins, `spencer.menu` as the start
-button and the current left/center/right icon order. If you use it without the [`menu/`](menu/) plugin, change
+button, the Indicators widget with `"alwaysShow": true` (night light,
+reminder, do-not-disturb and the other indicators stay visible instead of
+appearing only on hover) and the current left/center/right icon order. If you use it without the [`menu/`](menu/) plugin, change
 `spencer.menu` back to `omarchy.menu`. On a new machine,
 after cloning this repo into `~/.config/omarchy/plugins/spencer.bar`, copy
 its `bar` subtree into your own `~/.config/omarchy/shell.json` (or copy the

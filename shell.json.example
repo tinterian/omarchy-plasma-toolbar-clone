@@ -55,7 +55,8 @@
           "id": "omarchy.tray"
         },
         {
-          "id": "omarchy.indicators"
+          "id": "omarchy.indicators",
+          "alwaysShow": true
         },
         {
           "id": "omarchy.weather"
