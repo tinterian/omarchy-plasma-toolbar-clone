@@ -44,6 +44,8 @@ What's added on top of stock:
   (persisted, survives restarts); there's currently no UI to go back to
   "follow the theme" short of deleting `floating-settings.json`'s
   `borderCustomized`/`borderHue`/`borderSaturation`/`borderLightness` keys.
+  That file is per-machine and git-ignored: the settings popup creates it on
+  your first change, and without it the bar uses its built-in defaults.
 - **Outline color swatches pulled from the active theme** — no arbitrary
   hue wheel; the presets are your theme's own `colors.toml` palette
   (accent/red/orange/yellow/green/cyan/blue/magenta/brown), so switching

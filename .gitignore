@@ -1,0 +1,4 @@
+# Per-machine appearance settings written by the bar's settings popup
+# (gap/opacity/blur/outline). Not part of the package; the bar falls back to
+# built-in defaults when this file is absent.
+floating-settings.json
