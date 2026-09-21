@@ -3,11 +3,27 @@
 A Quickshell Omarchy bar, customized to feel like the KDE Plasma taskbar:
 a floating panel with adjustable position, opacity, blur, and outline
 color, plus pinned-app launchers with a dock-style right-click menu. It
-does **not** replace Omarchy's app launcher; the optional [`menu/`](menu/)
-plugin in this repo is a clone of the stock `omarchy.menu` that adds a
-right-click menu on app rows (Open, Pin to bar, Pin to dock, Uninstall).
+ships as one package with a launcher-menu clone ([`menu/`](menu/), a copy of
+the stock `omarchy.menu`) that adds a right-click menu on app rows (Open,
+Pin to bar, Pin to dock, Uninstall). One install command sets up both.
 
 ![Settings popup](screenshot-settings.png)
+
+## Install (bar + menu together)
+
+```bash
+omarchy plugin add https://github.com/tinterian/omarchy-plasma-toolbar-clone.git --yes \
+  && ~/.config/omarchy/plugins/spencer.bar/install.sh
+```
+
+`install.sh` links `menu/` in as its own plugin (`spencer.menu`, needed
+because Omarchy scans third-party plugins one folder deep, one manifest
+each), enables `spencer.bar` and `spencer.menu`, and restarts the shell. It is
+safe to re-run. Because the menu is a symlink into this checkout,
+`omarchy plugin update spencer.bar` (or a plain `git pull`) updates both;
+run `omarchy restart shell` afterwards, since menu changes only load on a
+shell restart. `uninstall.sh` hands the stock bar and menu back and removes
+the link. See `shell.json.example` for a starting bar layout.
 
 Built by iterating with Claude Code on top of `omarchy.bar` (this repo
 started as a clone of the stock bar — see `manifest.json`'s `clonedFrom`).
@@ -78,26 +94,25 @@ later. Files: `Menu.qml` (the stock menu plus the popup), `bin/pin-app.sh`
 (bar/dock pin and unpin, atomic and validated), `LocalAppLibrary.qml` and
 `AppSearch.js` (see below). `MenuModel.js` and `BarWidget.qml` are stock.
 
-**Install:** `omarchy plugin clone omarchy.menu`, copy this folder's files
-over `~/.config/omarchy/plugins/<you>.menu/` (the clone's id is
-`<user>.menu`; this repo's copy is `spencer.menu`), then
-`omarchy restart shell`. Menu changes only load after a shell restart.
+**Install:** part of the package, see [Install](#install-bar--menu-together)
+above. Do not `omarchy plugin clone omarchy.menu` by hand; `install.sh`
+links this folder in and enables it.
 
 Things worth knowing:
 
-- **The clone moves your start button.** Enabling a cloned menu puts the new
-  id in the bar's *center* slot and drops the stock one. Move
-  `spencer.menu` back to where `omarchy.menu` was in `bar.layout`
-  (`shell.json.example` shows it). The clone also adds
-  `cloneSourceRestores` and `disabledPlugins` keys to `shell.json`.
+- **Enabling the menu swaps it into the stock menu's start-button slot** and
+  disables `omarchy.menu` (`disabledPlugins` and `cloneSourceRestores` in
+  `shell.json` record this so `uninstall.sh` can undo it). If your start
+  button ever lands in the bar's *center* instead, move `spencer.menu` back to
+  where `omarchy.menu` was in `bar.layout` (`shell.json.example` shows it).
 - **`manifest.json` sets `keepLoaded: false`, and the menu carries its own
   app list.** The host destroys a kept-loaded third-party plugin's shell API
   about a second after startup, leaving `shell.appLibrary` null, so the
   Apps submenu came up empty. Loading on demand avoids the destroyed API,
   and `LocalAppLibrary.qml` (built on `DesktopEntries`, same surface as the
   shell's `AppLibrary`) is used whenever the host provides none.
-- The repo's `menu/` is a copy for distribution; the live plugin is
-  `~/.config/omarchy/plugins/spencer.menu/`. Sync changes both ways by hand.
+- The live plugin `~/.config/omarchy/plugins/spencer.menu` is a symlink to
+  this repo's `menu/`, so there is one copy: edit it here, commit here.
 - Derived from Omarchy's stock menu code (MIT). Only the right-click popup,
   the pin script and the fallback app list are new.
 - Not exercised: Uninstall, and a physical right-click (the popup was driven
