@@ -394,3 +394,20 @@ The bar's blur needs a block in `~/.config/hypr/looknfeel.lua` (kept in
 `hypr/blur.lua`). `omarchy-refresh-hyprland` resets that file to stock, so the
 post-boot and post-update hooks run `bin/ensure-hypr-blur`, which re-appends
 the block if its marker line is missing.
+
+## TekScan compatibility patch
+
+`tiertek.tekscan`'s bar button does nothing on a replacement bar like this
+one: only the stock bar hands a widget its plugin's service. Tested
+2026-10-10: unpatched, the button never opens the window; patched, it opens
+and closes. `patches/tiertek.tekscan-BarWidget.patch` makes the widget fall
+back to TekScan's own `tekscan` IPC target. It is kept as an uncommitted edit
+in the TekScan checkout so `omarchy plugin update tiertek.tekscan` still
+fast-forwards (it refuses, without losing the edit, if upstream changed the
+same file). If the edit is ever lost, re-apply it:
+
+```bash
+git -C ~/.config/omarchy/plugins/tiertek.tekscan apply \
+  ~/.config/omarchy/plugins/spencer.bar/patches/tiertek.tekscan-BarWidget.patch
+omarchy restart shell
+```

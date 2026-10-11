@@ -1,0 +1,61 @@
+diff --git i/BarWidget.qml w/BarWidget.qml
+index 80c4909..ca79e6e 100644
+--- i/BarWidget.qml
++++ w/BarWidget.qml
+@@ -1,4 +1,5 @@
+ import QtQuick
++import Quickshell
+ import qs.Commons
+ import qs.Ui
+ 
+@@ -12,19 +13,36 @@ BarWidget {
+   id: root
+   moduleName: "tiertek.tekscan"
+ 
+-  readonly property var service: bar && bar.shell && typeof bar.shell.serviceFor === "function"
+-    ? bar.shell.serviceFor(moduleName) : null
++  // serviceFor() is a plain lookup, not a notifying property, so a binding
++  // evaluated before Service.qml registers stays null forever. Resolve it
++  // again whenever the bar changes and on every click instead.
++  property var service: null
++  function resolveService() {
++    var s = bar && bar.shell && typeof bar.shell.serviceFor === "function"
++      ? bar.shell.serviceFor(moduleName) : null
++    if (s !== service) service = s
++    return s
++  }
++  onBarChanged: resolveService()
++  onModuleNameChanged: resolveService()
++  Component.onCompleted: Qt.callLater(resolveService)
+ 
+   // Shape contract for shell summon/hide/toggle routing (open/close/opened on
+   // the bar-widget root), forwarded to the window the widget does not own.
+   readonly property bool opened: service ? service.opened : false
+   readonly property bool scanning: service ? service.scanning : false
+ 
+-  function show() { if (service) service.show() }
+-  function hide() { if (service) service.hide() }
++  // Only the stock bar can hand a widget its own plugin's service; replacement
++  // bars get a service-less API by design. Without the service, drive the
++  // window through Service.qml's `tekscan` IPC target, which works from any bar.
++  function ipc(action) { Quickshell.execDetached(["omarchy-shell", "tekscan", action]) }
++
++  function show() { if (resolveService()) service.show(); else ipc("show") }
++  function hide() { if (resolveService()) service.hide(); else ipc("hide") }
+   function open() { show() }
+   function close() { hide() }
+-  function toggle() { if (service) service.toggle() }
++  function toggle() { if (resolveService()) service.toggle(); else ipc("toggle") }
++  function showAndScan() { if (resolveService()) service.showAndScan(); else ipc("scan") }
+ 
+   implicitWidth: button.implicitWidth
+   implicitHeight: button.implicitHeight
+@@ -37,7 +55,7 @@ BarWidget {
+     tooltipText: root.scanning ? "TekScan — scanning…" : "TekScan"
+     active: root.opened || root.scanning
+     onPressed: function(buttonCode) {
+-      if (buttonCode === Qt.RightButton) { if (root.service) root.service.showAndScan() }
++      if (buttonCode === Qt.RightButton) { root.showAndScan() }
+       else root.toggle()
+     }
+   }
