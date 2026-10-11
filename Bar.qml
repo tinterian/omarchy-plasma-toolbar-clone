@@ -96,7 +96,13 @@ Item {
   // "see-through, matches wallpaper" toggle (transparent/panelAlpha below),
   // which stays a fixed, near-invisible value regardless of this setting.
   property real opacityLevel: 0.4
-  readonly property real panelAlpha: transparent ? 0.16 : opacityLevel
+  // spencer.bar: the Opacity slider always drives the fill. Transparent mode
+  // used to pin this at 0.16, which made the slider look dead; the slider
+  // reaches 0 on its own, so transparent mode now only adapts the foreground.
+  // While blur is on the fill never drops below 1%: the omarchy-bar layer rule
+  // (hypr/looknfeel.lua) has ignore_alpha = 0 so the fully clear floating gap
+  // stays unblurred, which would also skip a fully clear fill.
+  readonly property real panelAlpha: blurSize > 0 ? Math.max(opacityLevel, 0.01) : opacityLevel
   readonly property color panelBackground: Qt.rgba(background.r, background.g, background.b, panelAlpha)
   // Outline color, decomposed as hue + lightness (HSL) so each is a single
   // slider. Seeded from the theme's own accent color -- specifically
@@ -226,12 +232,23 @@ Item {
 
   onBlurSizeChanged: applyBlurSize(blurSize)
 
+  // spencer.bar: `hyprctl reload` resets decoration.blur.size to the value in
+  // hypr/looknfeel.lua; put the slider's value back afterwards.
+  Connections {
+    target: Hyprland
+    function onRawEvent(event) {
+      if (event.name === "configreloaded") root.applyBlurSize(root.blurSize)
+    }
+  }
+
   FileView {
     id: floatingSettingsFile
     path: root.floatingSettingsPath
     watchChanges: true
     atomicWrites: true
     printErrors: false
+    // spencer.bar: watchChanges only signals; re-read so hand edits apply live.
+    onFileChanged: reload()
     onLoaded: root.applyFloatingSettings(text())
     onLoadFailed: function() {}
   }

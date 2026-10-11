@@ -346,6 +346,20 @@ facade by Omarchy's design; only the built-in bar can hand a widget its own
 plugin's service. Widgets that need their service should fall back to their
 IPC target (TekScan does).
 
-Editing a third-party *widget's* QML does not take effect until
-`omarchy restart shell`: the shell reuses the compiled component while the
-file URL is unchanged.
+Editing this bar's QML (or any plugin widget's) does not take effect until
+`omarchy restart shell`: the log says "reloading", but the shell keeps the
+compiled component while the file URL is unchanged. `bin/sync-upstream`
+restarts the shell itself after a merge.
+
+## Opacity and blur
+
+- **Opacity** always sets the fill alpha. The stock double-click "transparent"
+  mode no longer overrides it; it only adapts the foreground to the wallpaper.
+- **Blur** needs Hyprland config, which lives in `~/.config/hypr/looknfeel.lua`
+  (block marked `spencer.bar`): blur enabled globally, `no_blur` on all
+  windows so only the bar is blurred, and a layer rule
+  `{ namespace = "omarchy-bar", blur = true, ignore_alpha = 0 }`.
+  `ignore_alpha = 0` keeps the clear floating gap unblurred, so while blur is
+  on the fill is held at a minimum 1% alpha (invisible) to stay blurrable.
+  The slider sets `decoration.blur.size` at runtime and is re-applied after
+  `hyprctl reload`.

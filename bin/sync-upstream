@@ -153,9 +153,7 @@ if (( DRY )); then
   exit 0
 fi
 
-# Apply. Note the shell log position first so we only judge new lines.
-QSLOG=${SPENCER_BAR_QSLOG:-$(ls -td /run/user/"$(id -u)"/quickshell/by-id/*/ 2>/dev/null | head -1)log.log}  # override for tests
-LOGPOS=$( [[ -f $QSLOG ]] && wc -l <"$QSLOG" || echo 0 )
+# Apply.
 
 cp -r "$TMP/out/." "$REPO/"
 for f in "${DELETES[@]}"; do rm -f "$REPO/$f"; done
@@ -185,11 +183,24 @@ Deleted: ${DELETES[*]}}"; then
 fi
 log "merged and committed: ${CHANGED[*]:-snapshot only} ${DELETES[*]:+; deleted ${DELETES[*]}}"
 
-# Give the shell's hot reload a moment, then look for load failures in this
-# plugin. Runtime TypeErrors during teardown are normal noise; these are not.
-if [[ -f $QSLOG ]] && { pgrep -x quickshell >/dev/null || pgrep -f omarchy-shell >/dev/null; }; then
-  sleep 5
-  errors=$(tail -n +"$((LOGPOS + 1))" "$QSLOG" 2>/dev/null | grep -a "spencer.bar/" \
+# The shell does not truly hot-reload a bar or widget whose file URL is
+# unchanged; it keeps the compiled component. Restart it so the merged code is
+# what actually runs, then look for load failures in the new session's log.
+# Runtime TypeErrors during teardown are normal noise; these are not.
+qslog_dir() { ls -td /run/user/"$(id -u)"/quickshell/by-id/*/ 2>/dev/null | head -1; }
+if [[ -n ${SPENCER_BAR_QSLOG:-} ]]; then          # tests: no restart, fixed log
+  QSLOG=$SPENCER_BAR_QSLOG; sleep 5
+elif pgrep -f omarchy-shell >/dev/null; then
+  old_dir=$(qslog_dir)
+  omarchy restart shell >/dev/null 2>&1
+  for _ in $(seq 20); do [[ $(qslog_dir) != "$old_dir" ]] && break; sleep 1; done
+  sleep 6
+  QSLOG=$(qslog_dir)log.log
+else
+  QSLOG=""
+fi
+if [[ -n $QSLOG && -f $QSLOG ]]; then
+  errors=$(grep -a "spencer.bar/" "$QSLOG" \
     | grep -a -i -E "is not a type|unavailable|non-existent|cannot assign|expected token|syntax error|failed to load|is not defined|ReferenceError" | head -5)
   if [[ -n $errors ]]; then
     git -C "$REPO" reset -q --hard HEAD~1
@@ -197,6 +208,7 @@ if [[ -f $QSLOG ]] && { pgrep -x quickshell >/dev/null || pgrep -f omarchy-shell
     log "bar failed to load after merge; rolled back. Errors: $errors"
     notify critical "Bar sync rolled back" \
       "The merged bar failed to load, so it was reverted. See $LOG"
+    pgrep -f omarchy-shell >/dev/null && omarchy restart shell >/dev/null 2>&1
     exit 1
   fi
 fi
