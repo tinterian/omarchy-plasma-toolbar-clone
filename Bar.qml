@@ -2112,7 +2112,13 @@ Item {
               step: modelData.step
               value: root[modelData.prop]
 
-              onMoved: function(v) { root[modelData.prop] = v }
+              // spencer.bar: moving saturation/brightness is a deliberate pick,
+              // same as a swatch click. Without this the save recorded
+              // borderCustomized: false and the next load fell back to the theme.
+              onMoved: function(v) {
+                if (modelData.prop !== "borderOpacity") root.borderCustomized = true
+                root[modelData.prop] = v
+              }
               onReleased: root.persistFloatingSettings()
             }
           }
