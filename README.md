@@ -26,8 +26,12 @@ shell restart. `install.sh` also installs post-boot and post-update hooks
 in `~/.config/omarchy/hooks/` that merge future stock `omarchy.bar` changes
 into this bar and keep its blur block in `~/.config/hypr/looknfeel.lua` (see
 "Staying in sync" and "Blur config self-repair" below), and adds that blur
-block now. `uninstall.sh` hands the stock bar and menu back and removes the
-link, the hooks and the blur block. See `shell.json.example` for a starting bar layout.
+block now. `uninstall.sh` reverses all of it: stock bar and menu back on, link
+removed (and a `spencer.menu` folder install.sh moved aside put back), the
+bar's pinned-app icons removed from `shell.json` (backup kept), hooks and
+their sync state removed, and the blur block taken out of `looknfeel.lua`.
+Only this checkout is left; `omarchy plugin remove spencer.bar --yes`
+deletes it. See `shell.json.example` for a starting bar layout.
 
 Built by iterating with Claude Code on top of `omarchy.bar` (this repo
 started as a clone of the stock bar — see `manifest.json`'s `clonedFrom`).
