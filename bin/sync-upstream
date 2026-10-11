@@ -1,0 +1,198 @@
+#!/bin/bash
+# ============================================================================
+# FILE:    bin/sync-upstream
+# TASK:    Keep spencer.bar (a fork of stock omarchy.bar) current after Omarchy updates
+# STATUS:  DONE
+# OWNER:   Claude Code (opus-5.5) 2026-10-10 22:00
+#
+# WHAT THIS FILE DOES:
+#   Three-way merges stock $OMARCHY_PATH/shell/plugins/bar into this fork,
+#   using upstream/ (the stock tree we last merged) as the base. A clean merge
+#   is applied, committed, and checked against the shell log (rolled back if
+#   the bar then fails to load). A conflicted merge never touches the live bar:
+#   the merged files are left under ~/.local/state/spencer.bar-sync/ and a
+#   notification says where. Does nothing when stock hasn't changed, so it is
+#   safe to run on every boot and every update.
+#
+# NEXT STEP (if not DONE):
+#   none — file complete
+# ============================================================================
+#
+# Usage: bin/sync-upstream [--quiet] [--dry-run]
+#   Installed as post-update and post-boot hooks (spencer-bar-sync.hook).
+
+set -uo pipefail
+
+QUIET=0 DRY=0
+for arg in "$@"; do
+  case $arg in
+    --quiet) QUIET=1 ;;
+    --dry-run) DRY=1 ;;
+    *) echo "Usage: $0 [--quiet] [--dry-run]" >&2; exit 2 ;;
+  esac
+done
+
+REPO=$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)
+STOCK=${OMARCHY_PATH:-/usr/share/omarchy}/shell/plugins/bar
+SNAP=$REPO/upstream
+STATE=${XDG_STATE_HOME:-$HOME/.local/state}/spencer.bar-sync
+LOG=$STATE/sync.log
+VERSION=$(pacman -Q omarchy 2>/dev/null | awk '{print $2}')
+VERSION=${VERSION:-unknown}
+
+mkdir -p "$STATE"
+
+log() { echo "$(date '+%F %T') $*" >>"$LOG"; (( QUIET )) || echo "$*"; }
+notify() { # urgency title body
+  omarchy-notification-send -u "$1" "$2" "$3" 2>/dev/null \
+    || notify-send -u "$1" "$2" "$3" 2>/dev/null || true
+}
+
+# Stock files that are not merged into the live fork: the fork has its own
+# manifest (different id) and README. They are still kept in upstream/.
+is_fork_owned() { [[ $1 == manifest.json || $1 == README.md ]]; }
+# upstream/ lives inside the plugin directory, so a literal manifest.json there
+# would be scanned as a second omarchy.bar plugin.
+snap_name() { [[ $1 == manifest.json ]] && echo manifest.json.upstream || echo "$1"; }
+
+[[ -d $STOCK ]] || { log "stock bar not found at $STOCK; nothing to do"; exit 0; }
+[[ -d $SNAP ]] || { log "no upstream/ snapshot in $REPO; cannot pick a merge base"; exit 1; }
+
+TMP=$(mktemp -d)
+trap 'rm -rf "$TMP"' EXIT
+
+# Normalised copy of current stock, laid out like upstream/.
+mkdir -p "$TMP/new"
+cp -r "$STOCK/." "$TMP/new/"
+[[ -f $TMP/new/manifest.json ]] && mv "$TMP/new/manifest.json" "$TMP/new/manifest.json.upstream"
+cp "$SNAP/VERSION" "$TMP/new/VERSION" 2>/dev/null || true
+
+if diff -rq "$TMP/new" "$SNAP" >/dev/null; then
+  log "stock omarchy.bar unchanged since last sync ($(cat "$SNAP/VERSION" 2>/dev/null)); nothing to do"
+  exit 0
+fi
+
+if [[ -e $STATE/rolled-back-$VERSION ]]; then
+  log "merge for omarchy $VERSION was rolled back earlier; not retrying (delete $STATE/rolled-back-$VERSION to retry)"
+  exit 1
+fi
+
+log "stock omarchy.bar changed (now omarchy $VERSION); merging"
+
+if [[ -n $(git -C "$REPO" status --porcelain --untracked-files=no 2>/dev/null) ]]; then
+  log "spencer.bar has uncommitted changes; skipping sync so they aren't mixed into it"
+  notify normal "Bar sync skipped" "spencer.bar has uncommitted changes. Commit them, then run $REPO/bin/sync-upstream"
+  exit 1
+fi
+
+# Every path known to old or new stock.
+mapfile -t FILES < <(
+  { (cd "$STOCK" && find . -type f); (cd "$SNAP" && find . -type f); } \
+    | sed 's|^\./||' | grep -v -x -e VERSION -e manifest.json.upstream | sort -u
+)
+
+mkdir -p "$TMP/out"
+CONFLICTS=() DELETES=() CHANGED=()
+
+for f in "${FILES[@]}"; do
+  is_fork_owned "$f" && continue
+  base=$SNAP/$(snap_name "$f") theirs=$STOCK/$f ours=$REPO/$f out=$TMP/out/$f
+  mkdir -p "$(dirname "$out")"
+
+  if [[ -f $theirs && ! -f $base ]]; then           # added upstream
+    if [[ ! -f $ours ]]; then cp "$theirs" "$out"; CHANGED+=("$f (new)")
+    elif cmp -s "$ours" "$theirs"; then :
+    else
+      cp "$ours" "$out"
+      git merge-file -q -L ours -L base -L "stock $VERSION" "$out" /dev/null "$theirs" \
+        && CHANGED+=("$f") || CONFLICTS+=("$f (added upstream, exists locally)")
+    fi
+  elif [[ ! -f $theirs && -f $base ]]; then         # removed upstream
+    if [[ -f $ours ]]; then
+      if cmp -s "$ours" "$base"; then DELETES+=("$f")
+      else CONFLICTS+=("$f (removed upstream, modified locally)"); cp "$ours" "$out"
+      fi
+    fi
+  elif [[ -f $theirs && -f $base ]]; then           # present in both
+    cmp -s "$base" "$theirs" && continue            # upstream didn't touch it
+    if [[ ! -f $ours ]]; then
+      log "  $f changed upstream but was deleted in the fork; leaving it deleted"
+      continue
+    fi
+    cp "$ours" "$out"
+    git merge-file -q -L ours -L "base $(cat "$SNAP/VERSION" 2>/dev/null)" -L "stock $VERSION" \
+      "$out" "$base" "$theirs"
+    rc=$?
+    if (( rc == 0 )); then cmp -s "$out" "$ours" || CHANGED+=("$f")
+    elif (( rc > 0 )); then CONFLICTS+=("$f ($rc conflict(s))")
+    else log "  git merge-file failed on $f"; CONFLICTS+=("$f (merge error)")
+    fi
+  fi
+done
+
+if (( ${#CONFLICTS[@]} )); then
+  dest=$STATE/conflicts-$VERSION-$(date +%Y%m%d-%H%M%S)
+  mkdir -p "$dest"
+  cp -r "$TMP/out/." "$dest/"
+  cp -r "$TMP/new" "$dest/.stock-$VERSION"
+  { echo "Conflicts merging stock omarchy.bar ($VERSION) into spencer.bar:"
+    printf '  %s\n' "${CONFLICTS[@]}"
+    echo
+    echo "Merged files (with conflict markers) are in this directory."
+    echo "The live bar was NOT changed. To finish: resolve the files here, copy them into"
+    echo "$REPO, replace $SNAP with .stock-$VERSION (keeping VERSION), commit."
+  } >"$dest/README.txt"
+  log "conflicts: ${CONFLICTS[*]}; merged files left in $dest; live bar unchanged"
+  notify critical "Bar needs a manual merge" \
+    "Omarchy $VERSION changed the stock bar where your bar is customized. Your bar is unchanged. Details: $dest/README.txt"
+  exit 1
+fi
+
+if (( DRY )); then
+  log "dry run: would update ${CHANGED[*]:-nothing} ${DELETES[*]:+; delete ${DELETES[*]}}"
+  exit 0
+fi
+
+# Apply. Note the shell log position first so we only judge new lines.
+QSLOG=$(ls -td /run/user/"$(id -u)"/quickshell/by-id/*/ 2>/dev/null | head -1)log.log
+LOGPOS=$( [[ -f $QSLOG ]] && wc -l <"$QSLOG" || echo 0 )
+
+cp -r "$TMP/out/." "$REPO/"
+for f in "${DELETES[@]}"; do rm -f "$REPO/$f"; done
+rm -rf "$SNAP"
+cp -r "$TMP/new" "$SNAP"
+echo "$VERSION" >"$SNAP/VERSION"
+
+# Stage only what this sync touched, never unrelated untracked files.
+git -C "$REPO" add -A -- upstream
+(cd "$TMP/out" && find . -type f -print0) | xargs -0 -r git -C "$REPO" add -A --
+for f in "${DELETES[@]}"; do git -C "$REPO" add -A -- "$f"; done
+if git -C "$REPO" diff --cached --quiet; then
+  log "merge produced no changes to commit"
+  exit 0
+fi
+git -C "$REPO" commit -q -m "Sync with stock omarchy.bar from omarchy $VERSION
+
+Automatic three-way merge by bin/sync-upstream.
+Updated: ${CHANGED[*]:-none}${DELETES[*]:+
+Deleted: ${DELETES[*]}}"
+log "merged and committed: ${CHANGED[*]:-snapshot only} ${DELETES[*]:+; deleted ${DELETES[*]}}"
+
+# Give the shell's hot reload a moment, then look for load failures in this
+# plugin. Runtime TypeErrors during teardown are normal noise; these are not.
+if [[ -f $QSLOG ]] && { pgrep -x quickshell >/dev/null || pgrep -f omarchy-shell >/dev/null; }; then
+  sleep 5
+  errors=$(tail -n +"$((LOGPOS + 1))" "$QSLOG" 2>/dev/null | grep -a "spencer.bar/" \
+    | grep -a -i -E "is not a type|unavailable|non-existent|cannot assign|expected token|syntax error|failed to load|is not defined|ReferenceError" | head -5)
+  if [[ -n $errors ]]; then
+    git -C "$REPO" reset -q --hard HEAD~1
+    touch "$STATE/rolled-back-$VERSION"
+    log "bar failed to load after merge; rolled back. Errors: $errors"
+    notify critical "Bar sync rolled back" \
+      "The merged bar failed to load, so it was reverted. See $LOG"
+    exit 1
+  fi
+fi
+
+notify low "Bar synced" "spencer.bar picked up stock bar changes from Omarchy $VERSION."
+exit 0

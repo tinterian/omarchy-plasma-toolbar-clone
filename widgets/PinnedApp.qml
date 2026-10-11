@@ -45,6 +45,10 @@ BarWidget {
 
   // Only injected for plugins whose manifest declares kind "menu", so this is
   // null under a "bar" plugin; everything below must work without it.
+  // The spencer.bar root, injected only for widgets shipped in this plugin.
+  // `bar` is the scoped PluginBarApi and has no removeModuleFromConfig().
+  property var barHost: null
+
   readonly property var appLibrary: root.bar && root.bar.shell ? root.bar.shell.appLibrary : null
   // Reading .values makes the binding re-run once the desktop entries have
   // finished loading at shell start.
@@ -163,8 +167,8 @@ BarWidget {
   }
 
   function unpin() {
-    if (root.bar && typeof root.bar.removeModuleFromConfig === "function")
-      root.bar.removeModuleFromConfig(root.moduleName)
+    if (root.barHost && typeof root.barHost.removeModuleFromConfig === "function")
+      root.barHost.removeModuleFromConfig(root.moduleName)
   }
 
   function buildMenuRows(wins) {
