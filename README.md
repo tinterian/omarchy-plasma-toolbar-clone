@@ -363,3 +363,10 @@ restarts the shell itself after a merge.
   on the fill is held at a minimum 1% alpha (invisible) to stay blurrable.
   The slider sets `decoration.blur.size` at runtime and is re-applied after
   `hyprctl reload`.
+
+## Blur config self-repair
+
+The bar's blur needs a block in `~/.config/hypr/looknfeel.lua` (kept in
+`hypr/blur.lua`). `omarchy-refresh-hyprland` resets that file to stock, so the
+post-boot and post-update hooks run `bin/ensure-hypr-blur`, which re-appends
+the block if its marker line is missing.

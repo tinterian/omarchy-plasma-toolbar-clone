@@ -1,0 +1,15 @@
+#!/bin/bash
+# Put the bar's blur block (hypr/blur.lua) back into ~/.config/hypr/looknfeel.lua
+# if it is missing, e.g. after omarchy-refresh-hyprland reset that file to stock.
+# Run from the post-boot and post-update hooks. No-op when the block is present.
+repo="$(cd "$(dirname "$0")/.." && pwd)"
+target="$HOME/.config/hypr/looknfeel.lua"
+marker="-- spencer.bar: blur behind the floating bar only."
+
+[[ -f $target ]] || exit 0
+grep -qF -- "$marker" "$target" && exit 0
+
+printf '\n' >>"$target"
+cat "$repo/hypr/blur.lua" >>"$target"
+hyprctl reload >/dev/null 2>&1 || true
+[[ ${1:-} == --quiet ]] || echo "spencer.bar: restored blur block in $target"
