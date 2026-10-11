@@ -21,13 +21,12 @@ What's added on top of stock:
 - **Outline color, decoupled from the fill** — hue/saturation/brightness/
   opacity for the panel's border are independent of the fill's opacity, so
   you can have an invisible fill with a visible outline, or vice versa.
-  Until you pick a swatch, the outline tracks your theme's `accent` color
-  live — the same `colors.toml` key Hyprland's own window border uses — so
-  it matches your actual window borders and updates automatically on
-  `omarchy theme set`. Picking a swatch pins it to that color instead
-  (persisted, survives restarts); there's currently no UI to go back to
-  "follow the theme" short of deleting `floating-settings.json`'s
-  `borderCustomized`/`borderHue`/`borderSaturation`/`borderLightness` keys.
+  Until you pick a swatch or move the saturation/brightness sliders, the
+  outline tracks your theme's `accent` color live (the same `colors.toml`
+  key Hyprland's window border uses). A custom pick is saved with the theme
+  it was made under, and switching themes drops it so the outline follows
+  the new theme's accent again, even if the switch happened while the
+  shell was down.
 - **Outline color swatches pulled from the active theme** — no arbitrary
   hue wheel; the presets are your theme's own `colors.toml` palette
   (accent/red/orange/yellow/green/cyan/blue/magenta/brown), so switching
@@ -58,6 +57,27 @@ What's added on top of stock:
 
 See `shell.json.example` for this machine's actual layout (bottom
 position, the pinned agent icon, icon order) to use as a starting point.
+
+## Install
+
+```bash
+git clone https://github.com/tinterian/omarchy-plasma-toolbar-clone.git \
+  ~/.config/omarchy/plugins/spencer.bar
+~/.config/omarchy/plugins/spencer.bar/bin/install
+```
+
+The folder must be named `spencer.bar` (the plugin id). `bin/install`:
+
+- installs post-boot and post-update hooks in `~/.config/omarchy/hooks/`
+  that merge future stock `omarchy.bar` changes into this bar and keep the
+  blur config in place (see below)
+- adds the bar's blur block to `~/.config/hypr/looknfeel.lua`
+- sets `"bar": { "id": "spencer.bar" }` in `~/.config/omarchy/shell.json`
+  (backup saved next to it; skip with `--no-select`)
+- restarts the shell
+
+It is safe to re-run. Bar settings (gap, opacity, blur, outline) are saved
+per machine in `floating-settings.json`, which is not tracked.
 
 ## Menu plugin (`menu/`)
 
