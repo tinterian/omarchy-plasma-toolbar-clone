@@ -171,11 +171,18 @@ if git -C "$REPO" diff --cached --quiet; then
   log "merge produced no changes to commit"
   exit 0
 fi
-git -C "$REPO" commit -q -m "Sync with stock omarchy.bar from omarchy $VERSION
+ident=()
+[[ -n $(git -C "$REPO" config user.email) ]] \
+  || ident=(-c user.name="spencer.bar sync" -c user.email="spencer.bar-sync@localhost")
+if ! git -C "$REPO" "${ident[@]}" commit -q -m "Sync with stock omarchy.bar from omarchy $VERSION
 
 Automatic three-way merge by bin/sync-upstream.
 Updated: ${CHANGED[*]:-none}${DELETES[*]:+
-Deleted: ${DELETES[*]}}"
+Deleted: ${DELETES[*]}}"; then
+  log "merged into the live bar but git commit failed; commit $REPO by hand"
+  notify critical "Bar sync: commit failed" "The bar was updated but not committed. See $LOG"
+  exit 1
+fi
 log "merged and committed: ${CHANGED[*]:-snapshot only} ${DELETES[*]:+; deleted ${DELETES[*]}}"
 
 # Give the shell's hot reload a moment, then look for load failures in this
