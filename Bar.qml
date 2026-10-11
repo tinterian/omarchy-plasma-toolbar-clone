@@ -119,6 +119,14 @@ Item {
   // an actual user pick, not every settings-file load, so the outline keeps
   // tracking theme changes for anyone who never touched this control.
   property bool borderCustomized: false
+  // spencer.bar: the theme a custom outline was picked under. When the active
+  // theme (theme.name) differs, the custom pick is dropped and the outline
+  // follows the new theme's accent again -- live, or at the next shell start
+  // if the switch happened while the shell was down.
+  property string borderTheme: ""
+  property string themeName: ""
+  property bool floatingSettingsLoaded: false
+  property bool themeNameLoaded: false
   property real borderHue: Color.accent.hslHue
   property real borderSaturation: Color.accent.hslSaturation
   property real borderLightness: Color.accent.hslLightness
@@ -162,6 +170,24 @@ Item {
     root.themeColors = found
   }
 
+  function resetBorderToTheme() {
+    root.borderCustomized = false
+    root.borderTheme = ""
+    root.borderHue = Qt.binding(function() { return Color.accent.hslHue })
+    root.borderSaturation = Qt.binding(function() { return Color.accent.hslSaturation })
+    root.borderLightness = Qt.binding(function() { return Color.accent.hslLightness })
+  }
+
+  function checkBorderTheme() {
+    if (!floatingSettingsLoaded || !themeNameLoaded || !themeName || !borderCustomized) return
+    if (borderTheme === themeName) return
+    // Settings saved before borderTheme existed: adopt the current theme
+    // rather than wiping a pick the user made under it.
+    if (borderTheme === "") root.borderTheme = themeName
+    else resetBorderToTheme()
+    persistFloatingSettings()
+  }
+
   function applyFloatingSettings(jsonText) {
     if (!jsonText) return
     try {
@@ -183,6 +209,7 @@ Item {
         if (typeof data.borderHue === "number" && isFinite(data.borderHue)) root.borderHue = Math.max(0, Math.min(1, data.borderHue))
         if (typeof data.borderLightness === "number" && isFinite(data.borderLightness)) root.borderLightness = Math.max(0, Math.min(1, data.borderLightness))
         if (typeof data.borderSaturation === "number" && isFinite(data.borderSaturation)) root.borderSaturation = Math.max(0, Math.min(1, data.borderSaturation))
+        root.borderTheme = typeof data.borderTheme === "string" ? data.borderTheme : ""
       }
       if (typeof data.borderOpacity === "number" && isFinite(data.borderOpacity)) root.borderOpacity = Math.max(0, Math.min(1, data.borderOpacity))
     } catch (e) {
@@ -197,6 +224,7 @@ Item {
       opacity: root.opacityLevel,
       blur: root.blurSize,
       borderCustomized: root.borderCustomized,
+      borderTheme: root.borderCustomized ? root.borderTheme : "",
       borderHue: root.borderHue,
       borderLightness: root.borderLightness,
       borderSaturation: root.borderSaturation,
@@ -249,7 +277,25 @@ Item {
     printErrors: false
     // spencer.bar: watchChanges only signals; re-read so hand edits apply live.
     onFileChanged: reload()
-    onLoaded: root.applyFloatingSettings(text())
+    onLoaded: {
+      root.applyFloatingSettings(text())
+      root.floatingSettingsLoaded = true
+      root.checkBorderTheme()
+    }
+    onLoadFailed: function() { root.floatingSettingsLoaded = true }
+  }
+
+  FileView {
+    id: themeNameFile
+    path: root.stateHome + "/omarchy/current/theme.name"
+    watchChanges: true
+    printErrors: false
+    onFileChanged: reload()
+    onLoaded: {
+      root.themeName = String(text() || "").trim()
+      root.themeNameLoaded = true
+      root.checkBorderTheme()
+    }
     onLoadFailed: function() {}
   }
 
@@ -258,6 +304,7 @@ Item {
     path: root.themeColorsPath
     watchChanges: true
     printErrors: false
+    onFileChanged: reload()
     onLoaded: root.loadThemeColors(text())
     onLoadFailed: function() {}
   }
@@ -2075,6 +2122,7 @@ Item {
                 cursorShape: Qt.PointingHandCursor
                 onClicked: {
                   root.borderCustomized = true
+                  root.borderTheme = root.themeName
                   root.borderHue = parent.swatchColor.hslHue
                   root.borderSaturation = parent.swatchColor.hslSaturation
                   root.borderLightness = parent.swatchColor.hslLightness
@@ -2116,7 +2164,10 @@ Item {
               // same as a swatch click. Without this the save recorded
               // borderCustomized: false and the next load fell back to the theme.
               onMoved: function(v) {
-                if (modelData.prop !== "borderOpacity") root.borderCustomized = true
+                if (modelData.prop !== "borderOpacity") {
+                  root.borderCustomized = true
+                  root.borderTheme = root.themeName
+                }
                 root[modelData.prop] = v
               }
               onReleased: root.persistFloatingSettings()
