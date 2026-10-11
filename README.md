@@ -312,3 +312,40 @@ copied from the first-party bar this was cloned from — are never picked up
 as registered bar-widgets. New widgets (like `widgets/PinnedApp.qml`) have
 to be loaded per-instance from shell.json instead, via
 `{ "type": "qml", "source": "~/.config/omarchy/plugins/spencer.bar/widgets/<File>.qml", ... }`.
+
+## Staying in sync with stock omarchy.bar
+
+This bar is a fork, so Omarchy updates to the stock bar have to be merged in.
+That is automated:
+
+- `upstream/` holds the stock `omarchy.bar` tree this fork was last merged
+  with (its `manifest.json` is stored as `manifest.json.upstream` so the shell
+  doesn't scan it as a second plugin). It is the base for three-way merges;
+  don't edit it by hand.
+- `bin/sync-upstream` merges the current stock bar into this fork whenever it
+  differs from `upstream/`. Clean merges are applied, committed, and checked
+  against the shell log; if the bar then fails to load, the commit is rolled
+  back. Conflicts never touch the live bar: the merged files land in
+  `~/.local/state/spencer.bar-sync/conflicts-<version>-<time>/` with a
+  `README.txt`, and you get a notification. Log: `~/.local/state/spencer.bar-sync/sync.log`.
+- It runs from the `spencer-bar-sync.hook` hook in
+  `~/.config/omarchy/hooks/post-update.d/` and `post-boot.d/` (boot catches
+  plain `pacman -Syu` upgrades). Run it by hand any time; `--dry-run` previews.
+
+Keep customizations merge-friendly: change as few stock lines as possible,
+put new code in new functions/blocks, and mark fork-only code with a
+`spencer.bar:` comment.
+
+Fork-only widget contract: widgets get the stock scoped `PluginBarApi` as
+`bar`, exactly as under the stock bar. Files shipped in this plugin's
+`widgets/` can also declare `property var barHost` to receive the bar root
+(used by PinnedApp's Unpin → `removeModuleFromConfig()`).
+
+Note: as a replacement bar, this fork's widgets get a service-less shell
+facade by Omarchy's design; only the built-in bar can hand a widget its own
+plugin's service. Widgets that need their service should fall back to their
+IPC target (TekScan does).
+
+Editing a third-party *widget's* QML does not take effect until
+`omarchy restart shell`: the shell reuses the compiled component while the
+file URL is unchanged.

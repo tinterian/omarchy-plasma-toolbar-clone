@@ -1,29 +1,27 @@
 # Keep spencer.bar in sync with stock omarchy.bar
-- **Last agent worked:** 2026-10-10 21:50 + Claude Code (opus-5.5)
-- **Status:** IN PROGRESS
+- **Last agent worked:** 2026-10-10 21:55 + Claude Code (opus-5.5)
+- **Status:** DONE
 - **Goal:** Port upstream omarchy.bar (4.0.4) into this fork and automate future re-syncs after Omarchy updates, so the bar stops breaking widgets (e.g. TekScan click did nothing).
 
 ## State
-- Branch `upstream-sync-4.0.4` created off master.
-- Root cause of widget breakage: fork was cloned from ~4.0.0 and lacks upstream's
-  per-plugin PluginBarApi machinery (pluginBarApiFor etc.); injectProps hands every
-  widget `bar = root`, and Bar has no `shell` property.
-- No 4.0.0 package available (pacman cache has 4.0.2, 4.0.4; pkgs.omarchy.org dropped 4.0.0).
-  Using 4.0.2 as merge base; lines 4.0.2 had but the initial clone lacked must be restored by hand.
-- Note: even fully synced, a replacement bar gets service-less widget facades by
-  Omarchy design. TekScan BarWidget now falls back to `omarchy-shell tekscan <action>` IPC.
+- master contains the 4.0.4 merge, upstream/ snapshot (VERSION 4.0.4-1) and bin/sync-upstream.
+- Hooks installed: ~/.config/omarchy/hooks/{post-update,post-boot}.d/spencer-bar-sync.hook
+  (thin wrapper calling bin/sync-upstream --quiet).
+- floating-settings.json is runtime state and is now gitignored.
 
 ## Next steps
-- [ ] 3-way merge Bar.qml (base 4.0.2, ours fork, theirs 4.0.4); resolve conflicts
-- [ ] Restore 4.0.2 features missing from initial clone (syncHidden IPC, barHidden margins, etc.)
-- [ ] Sync widgets/, indicators/, BarModel.js with 4.0.4
-- [ ] Store stock snapshot in upstream/ + UPSTREAM_VERSION
-- [ ] Write bin/sync-upstream (3-way merge vs snapshot, notify on conflict)
-- [ ] Install as post-update and post-boot hooks
-- [ ] Verify shell log clean, bar renders, TekScan + PinnedApp clicks work
+- [ ] User to click the TekScan bar button and confirm (verified via shell summon/hide IPC only).
+- [ ] User to confirm PinnedApp right-click > Unpin still works (barHost path; not clicked).
 
 ## Open questions / blockers
 - none
 
 ## Done
-- TekScan BarWidget: lazy service resolution + IPC fallback (its own repo).
+- Bar.qml 3-way merged (base 4.0.2, theirs 4.0.4); restored syncHidden IPC, tooltip
+  PlainText, press-and-hold guard that the ~4.0.0 clone never had. Shell log clean for spencer.bar.
+- widgets/, indicators/, BarModel.js replaced with stock 4.0.4 (fork had no edits there).
+- Bar hide/show (omarchy-toggle-bar) verified with floating gap intact.
+- TekScan opens/closes through the bar's summon path after `omarchy restart shell`.
+- sync-upstream tested on a clone: no-op, clean merge (+add/delete), conflict (live untouched),
+  dirty tree skip, rollback on simulated load error (+no retry).
+- TekScan BarWidget (separate repo, uncommitted): lazy service lookup + IPC fallback.
