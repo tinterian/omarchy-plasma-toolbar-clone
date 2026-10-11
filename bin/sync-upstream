@@ -154,7 +154,7 @@ if (( DRY )); then
 fi
 
 # Apply. Note the shell log position first so we only judge new lines.
-QSLOG=$(ls -td /run/user/"$(id -u)"/quickshell/by-id/*/ 2>/dev/null | head -1)log.log
+QSLOG=${SPENCER_BAR_QSLOG:-$(ls -td /run/user/"$(id -u)"/quickshell/by-id/*/ 2>/dev/null | head -1)log.log}  # override for tests
 LOGPOS=$( [[ -f $QSLOG ]] && wc -l <"$QSLOG" || echo 0 )
 
 cp -r "$TMP/out/." "$REPO/"
